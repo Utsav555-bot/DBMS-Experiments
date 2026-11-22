@@ -1,0 +1,160 @@
+-- DBMS EXPERIMENT 8
+-- AIM: To implement banking-style transactions using BEGIN, COMMIT, ROLLBACK,
+-- and SAVEPOINT, simulate partial failures, and demonstrate isolation levels
+-- and concurrency anomalies using two sessions.
+
+-- 1. Create Bank_Account table and insert records
+CREATE TABLE Bank_Account (
+    Account_ID INT PRIMARY KEY,
+    Account_Holder VARCHAR(50),
+    Balance DECIMAL(10,2)
+);
+
+INSERT INTO Bank_Account
+VALUES
+(101, 'Rahul Sharma', 50000.00),
+(102, 'Priya Singh', 30000.00),
+(103, 'Amit Kumar', 40000.00);
+
+SELECT * FROM Bank_Account;
+
+-- 2. Transaction using COMMIT
+START TRANSACTION;
+
+UPDATE Bank_Account
+SET Balance = Balance - 5000
+WHERE Account_ID = 101;
+
+UPDATE Bank_Account
+SET Balance = Balance + 5000
+WHERE Account_ID = 102;
+
+COMMIT;
+
+SELECT * FROM Bank_Account;
+
+-- 3. Transaction using ROLLBACK
+START TRANSACTION;
+
+UPDATE Bank_Account
+SET Balance = Balance - 10000
+WHERE Account_ID = 101;
+
+UPDATE Bank_Account
+SET Balance = Balance + 10000
+WHERE Account_ID = 103;
+
+ROLLBACK;
+
+SELECT * FROM Bank_Account;
+
+-- 4. Transaction using SAVEPOINT and ROLLBACK TO SAVEPOINT
+START TRANSACTION;
+
+UPDATE Bank_Account
+SET Balance = Balance - 3000
+WHERE Account_ID = 101;
+
+SAVEPOINT transfer_point;
+
+UPDATE Bank_Account
+SET Balance = Balance + 3000
+WHERE Account_ID = 102;
+
+ROLLBACK TO transfer_point;
+
+COMMIT;
+
+SELECT * FROM Bank_Account;
+
+-- 5. Partial rollback followed by another transfer
+START TRANSACTION;
+
+UPDATE Bank_Account
+SET Balance = Balance - 2000
+WHERE Account_ID = 101;
+
+SAVEPOINT before_second_transfer;
+
+UPDATE Bank_Account
+SET Balance = Balance + 2000
+WHERE Account_ID = 102;
+
+ROLLBACK TO before_second_transfer;
+
+UPDATE Bank_Account
+SET Balance = Balance + 2000
+WHERE Account_ID = 103;
+
+COMMIT;
+
+SELECT * FROM Bank_Account;
+
+-- 6. Demonstrate transaction isolation levels
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+START TRANSACTION;
+
+SELECT *
+FROM Bank_Account
+WHERE Account_ID = 101;
+
+COMMIT;
+
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+START TRANSACTION;
+
+SELECT *
+FROM Bank_Account
+WHERE Account_ID = 101;
+
+COMMIT;
+
+SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+START TRANSACTION;
+
+SELECT *
+FROM Bank_Account
+WHERE Account_ID = 101;
+
+COMMIT;
+
+-- 7. Transaction in Session 1
+-- Run this block in the first MySQL session.
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+START TRANSACTION;
+
+SELECT Balance
+FROM Bank_Account
+WHERE Account_ID = 101;
+
+UPDATE Bank_Account
+SET Balance = Balance - 5000
+WHERE Account_ID = 101;
+
+COMMIT;
+
+-- 8. Transaction in Session 2
+-- Run this block in a second MySQL session.
+-- For a concurrency demonstration, coordinate this block with Session 1.
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+START TRANSACTION;
+
+SELECT Balance
+FROM Bank_Account
+WHERE Account_ID = 101;
+
+UPDATE Bank_Account
+SET Balance = Balance - 3000
+WHERE Account_ID = 101;
+
+COMMIT;
+
+-- 9. Verify final balance
+SELECT *
+FROM Bank_Account
+WHERE Account_ID = 101;
